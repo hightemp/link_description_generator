@@ -133,8 +133,9 @@ const copyToClipboard = async () => {
 <style scoped>
 .app {
   min-height: 100vh;
-  padding: 2rem;
+  padding: 2rem 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  width: 100%;
 }
 
 .header {
@@ -155,11 +156,13 @@ const copyToClipboard = async () => {
 }
 
 .main {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   display: grid;
   gap: 2rem;
   grid-template-columns: 1fr 1fr;
+  width: 100%;
+  padding: 0 1rem;
 }
 
 .input-section, .output-section {
@@ -280,10 +283,11 @@ const copyToClipboard = async () => {
 @media (max-width: 768px) {
   .main {
     grid-template-columns: 1fr;
+    padding: 0 0.5rem;
   }
   
   .app {
-    padding: 1rem;
+    padding: 1rem 0;
   }
   
   .header h1 {
