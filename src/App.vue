@@ -142,17 +142,23 @@ const copyToClipboard = async () => {
   text-align: center;
   color: white;
   margin-bottom: 3rem;
+  padding: 0 1rem;
 }
 
 .header h1 {
-  font-size: 2.5rem;
+  font-size: clamp(2rem, 4vw, 2.5rem);
+  font-weight: 700;
   margin-bottom: 0.5rem;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  letter-spacing: -0.02em;
 }
 
 .header p {
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 2.5vw, 1.2rem);
   opacity: 0.9;
+  font-weight: 400;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .main {
@@ -167,9 +173,11 @@ const copyToClipboard = async () => {
 
 .input-section, .output-section {
   background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
 }
 
 .api-key-section, .text-input-section {
@@ -178,29 +186,48 @@ const copyToClipboard = async () => {
 
 .api-key-section label, .text-input-section label {
   display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  color: #333;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
 }
 
 .api-input, .text-input {
   width: 100%;
-  padding: 1rem;
-  border: 2px solid #e1e5e9;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease;
+  padding: 0.875rem 1rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 400;
+  background-color: #fafafa;
+  transition: all 0.2s ease;
+  line-height: 1.5;
 }
 
 .api-input:focus, .text-input:focus {
   outline: none;
   border-color: #667eea;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+
+.api-input:hover, .text-input:hover {
+  border-color: #9ca3af;
+  background-color: #ffffff;
 }
 
 .text-input {
   resize: vertical;
   min-height: 200px;
   font-family: inherit;
+  line-height: 1.6;
+}
+
+.api-input::placeholder, .text-input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
 }
 
 .generate-btn {
@@ -209,21 +236,31 @@ const copyToClipboard = async () => {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
+  letter-spacing: -0.01em;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .generate-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+.generate-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .generate-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
 .output-header {
@@ -234,17 +271,28 @@ const copyToClipboard = async () => {
 }
 
 .copy-btn {
-  padding: 0.5rem 1rem;
-  background: #28a745;
+  padding: 0.625rem 1.25rem;
+  background: #10b981;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  letter-spacing: -0.01em;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .copy-btn:hover {
-  background: #218838;
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.copy-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .loader {
@@ -268,30 +316,71 @@ const copyToClipboard = async () => {
 }
 
 .output-text {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   padding: 1.5rem;
   white-space: pre-wrap;
   word-wrap: break-word;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  line-height: 1.6;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
+  font-size: 0.9rem;
+  line-height: 1.7;
   max-height: 400px;
   overflow-y: auto;
+  color: #374151;
+  font-weight: 400;
+}
+
+.output-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  letter-spacing: -0.025em;
+}
+
+@media (max-width: 1024px) {
+  .main {
+    max-width: 800px;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
 }
 
 @media (max-width: 768px) {
   .main {
-    grid-template-columns: 1fr;
-    padding: 0 0.5rem;
+    padding: 0 1rem;
   }
   
   .app {
-    padding: 1rem 0;
+    padding: 1.5rem 0;
   }
   
-  .header h1 {
-    font-size: 2rem;
+  .input-section, .output-section {
+    padding: 1.5rem;
+  }
+  
+  .api-input, .text-input {
+    padding: 0.75rem;
+    font-size: 16px; /* Предотвращает зум на iOS */
+  }
+  
+  .generate-btn {
+    padding: 0.875rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    margin-bottom: 2rem;
+  }
+  
+  .input-section, .output-section {
+    padding: 1.25rem;
+  }
+  
+  .text-input {
+    min-height: 150px;
   }
 }
 </style>
