@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 
 interface Model {
   id: string
@@ -15,12 +15,25 @@ interface Model {
 const inputText = ref('')
 const outputText = ref('')
 const isLoading = ref(false)
-const apiKey = ref('')
-const selectedModel = ref('openai/gpt-4o-mini')
+const apiKey = ref(localStorage.getItem('openrouter_api_key') || '')
+const selectedModel = ref(localStorage.getItem('selected_model') || 'openai/gpt-4o-mini')
 const modelFilter = ref('')
 const showModelDropdown = ref(false)
 const availableModels = ref<Model[]>([])
 const isLoadingModels = ref(false)
+
+// Функции для работы с localStorage
+const saveApiKey = (key: string) => {
+  if (key.trim()) {
+    localStorage.setItem('openrouter_api_key', key)
+  } else {
+    localStorage.removeItem('openrouter_api_key')
+  }
+}
+
+const saveSelectedModel = (modelId: string) => {
+  localStorage.setItem('selected_model', modelId)
+}
 
 // Загрузка моделей из OpenRouter API
 const loadModels = async () => {
@@ -70,7 +83,17 @@ const selectModel = (modelId: string) => {
   selectedModel.value = modelId
   showModelDropdown.value = false
   modelFilter.value = ''
+  saveSelectedModel(modelId)
 }
+
+// Watchers для автоматического сохранения
+watch(apiKey, (newKey) => {
+  saveApiKey(newKey)
+})
+
+watch(selectedModel, (newModel) => {
+  saveSelectedModel(newModel)
+})
 
 const getSelectedModelName = () => {
   const model = availableModels.value.find(m => m.id === selectedModel.value)
@@ -151,7 +174,6 @@ const copyToClipboard = async () => {
   if (outputText.value) {
     try {
       await navigator.clipboard.writeText(outputText.value)
-      alert('Скопировано в буфер обмена!')
     } catch (err) {
       console.error('Ошибка копирования:', err)
     }
