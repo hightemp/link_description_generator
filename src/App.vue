@@ -1,10 +1,101 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+interface Model {
+  id: string
+  name: string
+  description?: string
+  context_length?: number
+  pricing?: {
+    prompt: string
+    completion: string
+  }
+}
 
 const inputText = ref('')
 const outputText = ref('')
 const isLoading = ref(false)
 const apiKey = ref('')
+const selectedModel = ref('openai/gpt-4o-mini')
+const modelFilter = ref('')
+const showModelDropdown = ref(false)
+const availableModels = ref<Model[]>([])
+const isLoadingModels = ref(false)
+
+// Загрузка моделей из OpenRouter API
+const loadModels = async () => {
+  isLoadingModels.value = true
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/models', {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      availableModels.value = data.data.map((model: any) => ({
+        id: model.id,
+        name: model.name || model.id,
+        description: model.description,
+        context_length: model.context_length,
+        pricing: model.pricing
+      }))
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки моделей:', error)
+    // Fallback к базовым моделям
+    availableModels.value = [
+      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
+      { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4' }
+    ]
+  } finally {
+    isLoadingModels.value = false
+  }
+}
+
+// Фильтрованный список моделей
+const filteredModels = computed(() => {
+  if (!modelFilter.value) return availableModels.value
+  
+  const filter = modelFilter.value.toLowerCase()
+  return availableModels.value.filter(model =>
+    model.name.toLowerCase().includes(filter) ||
+    model.id.toLowerCase().includes(filter) ||
+    (model.description && model.description.toLowerCase().includes(filter))
+  )
+})
+
+const selectModel = (modelId: string) => {
+  selectedModel.value = modelId
+  showModelDropdown.value = false
+  modelFilter.value = ''
+}
+
+const getSelectedModelName = () => {
+  const model = availableModels.value.find(m => m.id === selectedModel.value)
+  return model ? model.name : selectedModel.value
+}
+
+// Закрытие выпадающего списка при клике вне его
+const closeDropdown = (event: Event) => {
+  const target = event.target as HTMLElement
+  if (!target.closest('.model-dropdown')) {
+    showModelDropdown.value = false
+    modelFilter.value = ''
+  }
+}
+
+// Загружаем модели при монтировании компонента
+onMounted(() => {
+  loadModels()
+  document.addEventListener('click', closeDropdown)
+})
+
+// Очистка обработчика при размонтировании
+onUnmounted(() => {
+  document.removeEventListener('click', closeDropdown)
+})
 
 const generateDescription = async () => {
   if (!inputText.value.trim() || !apiKey.value.trim()) {
@@ -25,7 +116,7 @@ const generateDescription = async () => {
         'X-Title': 'Link Description Generator'
       },
       body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
+        model: selectedModel.value,
         messages: [
           {
             role: 'user',
@@ -86,6 +177,53 @@ const copyToClipboard = async () => {
             placeholder="Введите ваш API ключ"
             class="api-input"
           />
+        </div>
+
+        <div class="model-section">
+          <label for="model-select">Модель:</label>
+          <div class="model-dropdown" :class="{ 'open': showModelDropdown }">
+            <button
+              type="button"
+              class="model-select-btn"
+              @click="showModelDropdown = !showModelDropdown"
+              :disabled="isLoadingModels"
+            >
+              <span class="model-name">
+                {{ isLoadingModels ? 'Загрузка моделей...' : getSelectedModelName() }}
+              </span>
+              <svg class="dropdown-icon" :class="{ 'rotated': showModelDropdown }" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            
+            <div v-if="showModelDropdown" class="model-dropdown-content">
+              <div class="model-search">
+                <input
+                  v-model="modelFilter"
+                  placeholder="Поиск моделей..."
+                  class="model-search-input"
+                  @click.stop
+                />
+              </div>
+              
+              <div class="model-list">
+                <button
+                  v-for="model in filteredModels"
+                  :key="model.id"
+                  type="button"
+                  class="model-option"
+                  :class="{ 'selected': model.id === selectedModel }"
+                  @click="selectModel(model.id)"
+                >
+                  <div class="model-info">
+                    <div class="model-title">{{ model.name }}</div>
+                    <div class="model-id">{{ model.id }}</div>
+                    <div v-if="model.description" class="model-description">{{ model.description }}</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="text-input-section">
@@ -183,17 +321,163 @@ const copyToClipboard = async () => {
   backdrop-filter: blur(10px);
 }
 
-.api-key-section, .text-input-section {
+.api-key-section, .text-input-section, .model-section {
   margin-bottom: 1.5rem;
 }
 
-.api-key-section label, .text-input-section label {
+.api-key-section label, .text-input-section label, .model-section label {
   display: block;
   margin-bottom: 0.75rem;
   font-weight: 500;
   color: #374151;
   font-size: 0.95rem;
   letter-spacing: -0.01em;
+}
+
+/* Стили для выпадающего списка моделей */
+.model-dropdown {
+  position: relative;
+}
+
+.model-select-btn {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 400;
+  background-color: #fafafa;
+  transition: all 0.2s ease;
+  line-height: 1.5;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+}
+
+.model-select-btn:hover:not(:disabled) {
+  border-color: #9ca3af;
+  background-color: #ffffff;
+}
+
+.model-select-btn:focus {
+  outline: none;
+  border-color: #667eea;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.model-select-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.model-name {
+  flex: 1;
+  color: #374151;
+}
+
+.dropdown-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  transition: transform 0.2s ease;
+}
+
+.dropdown-icon.rotated {
+  transform: rotate(180deg);
+}
+
+.model-dropdown-content {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: white;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  margin-top: 0.25rem;
+  max-height: 300px;
+  overflow: hidden;
+}
+
+.model-search {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.model-search-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background-color: #f9fafb;
+  transition: all 0.2s ease;
+}
+
+.model-search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.model-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.model-option {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.model-option:hover {
+  background-color: #f8fafc;
+}
+
+.model-option.selected {
+  background-color: #eff6ff;
+  border-left: 3px solid #667eea;
+}
+
+.model-option:last-child {
+  border-bottom: none;
+}
+
+.model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.model-title {
+  font-weight: 500;
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.model-id {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
+}
+
+.model-description {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  line-height: 1.4;
+  margin-top: 0.25rem;
 }
 
 .api-input, .text-input {
