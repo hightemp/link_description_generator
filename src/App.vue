@@ -796,7 +796,7 @@ const copyToClipboard = async () => {
     min-height: 150px;
   }
 }
-</style>
+
 /* Стили для модального окна настроек */
 .settings-overlay {
   position: fixed;
@@ -982,3 +982,4 @@ const copyToClipboard = async () => {
     position: static;
   }
 }
+</style>
