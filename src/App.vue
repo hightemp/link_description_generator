@@ -21,6 +21,19 @@ const modelFilter = ref('')
 const showModelDropdown = ref(false)
 const availableModels = ref<Model[]>([])
 const isLoadingModels = ref(false)
+const showSettings = ref(false)
+
+// Промпт по умолчанию
+const defaultPrompt = `Проанализируй следующий текст и создай описание в стиле wiki в одном предложении. Каждый элемент должен содержать название, краткое описание и ссылку (если есть).
+Формат ответа:
+- Название — краткое описание. ссылка
+
+Пример:
+- Ace — голосовой помощник на базе собственной модели, способный управлять компьютером с высокой скоростью и точностью выполнения команд. https://generalagents.com/ace/
+
+Текст для анализа: {input}`
+
+const systemPrompt = ref(localStorage.getItem('system_prompt') || defaultPrompt)
 
 // Функции для работы с localStorage
 const saveApiKey = (key: string) => {
@@ -33,6 +46,23 @@ const saveApiKey = (key: string) => {
 
 const saveSelectedModel = (modelId: string) => {
   localStorage.setItem('selected_model', modelId)
+}
+
+const saveSystemPrompt = (prompt: string) => {
+  localStorage.setItem('system_prompt', prompt)
+}
+
+const resetPromptToDefault = () => {
+  systemPrompt.value = defaultPrompt
+  saveSystemPrompt(defaultPrompt)
+}
+
+const openSettings = () => {
+  showSettings.value = true
+}
+
+const closeSettings = () => {
+  showSettings.value = false
 }
 
 // Загрузка моделей из OpenRouter API
@@ -95,6 +125,10 @@ watch(selectedModel, (newModel) => {
   saveSelectedModel(newModel)
 })
 
+watch(systemPrompt, (newPrompt) => {
+  saveSystemPrompt(newPrompt)
+})
+
 const getSelectedModelName = () => {
   const model = availableModels.value.find(m => m.id === selectedModel.value)
   return model ? model.name : selectedModel.value
@@ -143,14 +177,7 @@ const generateDescription = async () => {
         messages: [
           {
             role: 'user',
-            content: `Проанализируй следующий текст и создай описание в стиле wiki в одном предложении. Каждый элемент должен содержать название, краткое описание и ссылку (если есть). 
-Формат ответа:
-- Название — краткое описание. ссылка
-
-Пример:
-- Ace — голосовой помощник на базе собственной модели, способный управлять компьютером с высокой скоростью и точностью выполнения команд. https://generalagents.com/ace/
-
-Текст для анализа: ${inputText.value}`
+            content: systemPrompt.value.replace('{input}', inputText.value)
           }
         ]
       })
@@ -184,7 +211,14 @@ const copyToClipboard = async () => {
 <template>
   <div class="app">
     <header class="header">
-      <h1>Генератор описания ссылок</h1>
+      <div class="header-content">
+        <h1>Генератор описания ссылок</h1>
+        <button @click="openSettings" class="settings-btn" title="Настройки">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12A3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97c0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1c0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66Z"/>
+          </svg>
+        </button>
+      </div>
       <p>Введите текст для анализа и получите структурированное описание</p>
     </header>
 
@@ -290,6 +324,45 @@ const copyToClipboard = async () => {
         </div>
       </div>
     </main>
+
+    <!-- Модальное окно настроек -->
+    <div v-if="showSettings" class="settings-overlay" @click="closeSettings">
+      <div class="settings-modal" @click.stop>
+        <div class="settings-header">
+          <h2>Настройки</h2>
+          <button @click="closeSettings" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="settings-content">
+          <div class="setting-group">
+            <label for="system-prompt">Системный промпт:</label>
+            <textarea
+              id="system-prompt"
+              v-model="systemPrompt"
+              placeholder="Введите системный промпт..."
+              rows="12"
+              class="prompt-textarea"
+            ></textarea>
+            <div class="prompt-help">
+              <p>Используйте <code>{input}</code> для вставки пользовательского текста</p>
+              <button @click="resetPromptToDefault" class="reset-btn">
+                Сбросить к значению по умолчанию
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="settings-footer">
+          <button @click="closeSettings" class="save-btn">
+            Сохранить и закрыть
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -308,12 +381,43 @@ const copyToClipboard = async () => {
   padding: 0 1rem;
 }
 
+.header-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
 .header h1 {
   font-size: clamp(2rem, 4vw, 2.5rem);
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin: 0;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
   letter-spacing: -0.02em;
+}
+
+.settings-btn {
+  position: absolute;
+  right: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.settings-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.settings-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .header p {
@@ -693,3 +797,188 @@ const copyToClipboard = async () => {
   }
 }
 </style>
+/* Стили для модального окна настроек */
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.settings-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 6px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.close-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.settings-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.setting-group {
+  margin-bottom: 1.5rem;
+}
+
+.setting-group label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.prompt-textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 200px;
+  background-color: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.prompt-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.prompt-help {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f0f9ff;
+  border: 1px solid #e0f2fe;
+  border-radius: 8px;
+}
+
+.prompt-help p {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  color: #0369a1;
+}
+
+.prompt-help code {
+  background: #e0f2fe;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
+  font-size: 0.8rem;
+  color: #0c4a6e;
+}
+
+.reset-btn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reset-btn:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.settings-footer {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.save-btn {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+@media (max-width: 768px) {
+  .settings-modal {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .settings-header, .settings-content, .settings-footer {
+    padding: 1rem 1.5rem;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .settings-btn {
+    position: static;
+  }
+}
